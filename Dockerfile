@@ -1,11 +1,12 @@
-# Use Java 21 image
 FROM eclipse-temurin:17-jdk
 
-# App jar copy
-COPY target/*.jar app.jar
+WORKDIR /app
 
-# Expose port
+COPY . .
+
+RUN chmod +x mvnw
+RUN ./mvnw clean package -DskipTests
+
 EXPOSE 8080
 
-# Run app
-ENTRYPOINT ["java", "-jar", "/app.jar"]
+CMD ["java", "-jar", "target/real-time-whiteboard-backend-0.0.1-SNAPSHOT.jar"]

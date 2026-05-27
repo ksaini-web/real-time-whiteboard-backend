@@ -5,7 +5,6 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/actions")
-@CrossOrigin("http://localhost:5173")
 public class ActionController {
 
     private final ActionService actionService;

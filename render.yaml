@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: whiteboard-backend
+    env: java
+    javaVersion: 17
+    # Maven clean package build command with test skipping for faster deployment
+    buildCommand: ./mvnw clean package -DskipTests
+    # Start the Spring Boot fat JAR built by spring-boot-maven-plugin
+    startCommand: java -Dserver.port=$PORT -jar target/*.jar
+    # Render health check endpoint to monitor service availability
+    healthCheckPath: /actuator/health
+    # Plans: free tier spins down after 15 min inactivity; scale to Standard for production
+    plan: free
+    # Environment variables from Render dashboard or hardcoded (use dashboard for secrets)
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: JAVA_OPTS
+        value: -Xmx512m -Xms256m
+      # Database configuration: populate these from Aiven MySQL credentials
+      - key: DB_HOST
+        value: # Replace with Aiven MySQL hostname
+      - key: DB_PORT
+        value: 3306
+      - key: DB_NAME
+        value: kartik
+      - key: DB_USER
+        value: # Replace with Aiven MySQL username
+      - key: DB_PASSWORD
+        value: # Replace with Aiven MySQL password (store as secret in Render)
+      # Frontend CORS origin: update to match your Vercel/production domain
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:5173,https://real-time-whiteboard-pearl.vercel.app

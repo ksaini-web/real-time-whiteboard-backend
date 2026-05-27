@@ -1,5 +1,6 @@
 package com.whiteboard.kartik.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.whiteboard.kartik.model.User;
 import com.whiteboard.kartik.repository.UserRepository;
 import jakarta.servlet.FilterChain;
@@ -14,19 +15,33 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
 
     public JwtFilter(
             JwtService jwtService,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ObjectMapper objectMapper
     ) {
         this.jwtService = jwtService;
         this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        // Skip JWT validation for public endpoints: /api/auth/**, /ws/**, /actuator/health
+        String path = request.getRequestURI();
+        return path.startsWith("/api/auth/") || 
+               path.startsWith("/ws") || 
+               path.equals("/actuator/health");
     }
 
     @Override
@@ -38,15 +53,17 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
+        // Missing or malformed Authorization header: return 401 JSON
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
+            sendUnauthorizedResponse(response, "Missing or invalid Authorization header");
             return;
         }
 
         String token = authHeader.substring(7);
 
+        // Invalid or expired token: return 401 JSON
         if (!jwtService.validateToken(token)) {
-            filterChain.doFilter(request, response);
+            sendUnauthorizedResponse(response, "Invalid or expired token");
             return;
         }
 
@@ -73,5 +90,17 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    // Return 401 Unauthorized with JSON error message instead of redirect
+    private void sendUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "Unauthorized");
+        error.put("message", message);
+        
+        response.getWriter().write(objectMapper.writeValueAsString(error));
     }
 }
